@@ -1,5 +1,9 @@
 var Hapi = require('hapi');
-var server = new Hapi.Server('localhost', 3000);
+var server = new Hapi.Server()
+server.connection({
+  'host': 'localhost',
+  'port': 3000
+});
 var socketio = require("socket.io");
 var io = socketio(server.listener);
 var twilio = require('twilio')(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN);
