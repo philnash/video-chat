@@ -17,7 +17,7 @@ io.on('connection', function(socket){
   // second in the room. Otherwise it is full.
   socket.on('join', function(room){
     var clients = io.sockets.adapter.rooms[room];
-    var numClients = (typeof clients !== 'undefined') ? Object.keys(clients).length : 0;
+    var numClients = typeof clients !== 'undefined' ? clients.length : 0;
     if(numClients == 0){
       socket.join(room);
     }else if(numClients == 1){
