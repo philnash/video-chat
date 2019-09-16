@@ -8,12 +8,15 @@ var VideoChat = {
   // asking for access to both the video and audio streams. If the request is
   // accepted callback to the onMediaStream function, otherwise callback to the
   // noMediaStream function.
-  requestMediaStream: function(event){
-    getUserMedia(
-      {video: true, audio: true},
-      VideoChat.onMediaStream,
-      VideoChat.noMediaStream
-    );
+  requestMediaStream: function(event) {
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        VideoChat.onMediaStream(stream);
+      })
+      .catch(error => {
+        VideoChat.noMediaStream(error);
+      });
   },
 
   // The onMediaStream function receives the media stream as an argument.
