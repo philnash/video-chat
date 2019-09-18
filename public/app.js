@@ -102,10 +102,15 @@ var VideoChat = {
   // to the peer.
   onIceCandidate: function(event) {
     if (event.candidate) {
-      logIt(`<<< Received local ICE candidate (${event.candidate.address})`);
+      logIt(`<<< Received local ICE candidate from STUN/TURN server (${event.candidate.address})`);
       if (connected) {
+        logIt(`>>> Sending local ICE candidate (${event.candidate.address})`);
         VideoChat.socket.emit('candidate', JSON.stringify(event.candidate));
       } else {
+        // If we are not 'connected' to the other peer, we are buffering the local ICE candidates.
+        // This most likely ios happening on the "caller" side.
+        // The peer may not have created the RTCPeerConnection yet, so we are waiting for the 'answer'
+        // to arrive. This will signal that the peer is ready to receive signaling. 
         localICECandidates.push(event.candidate);
       }
     }
@@ -179,13 +184,17 @@ var VideoChat = {
   // description.
   onAnswer: function(answer) {
     logIt('<<< Received answer');
-    console.log(answer);
     var rtcAnswer = new RTCSessionDescription(JSON.parse(answer));
     VideoChat.peerConnection.setRemoteDescription(rtcAnswer);
     connected = true;
     localICECandidates.forEach(candidate => {
+      // The caller now knows that the callee is ready to accept new 
+      // ICE candidates, so sending the buffer over
+      logIt(`>>> Sending local ICE candidate (${candidate.address})`);
       VideoChat.socket.emit('candidate', JSON.stringify(candidate));
     });
+    // Resest the buffer of local ICE candidates. This is not really needed
+    // in this specific client, but it's good practice
     localICECandidates = [];
   },
 
