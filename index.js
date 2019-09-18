@@ -1,29 +1,23 @@
-var Hapi = require('hapi');
-var server = new Hapi.Server()
-server.connection({
-  'host': 'localhost',
-  'port': 3000
-});
-var socketio = require("socket.io");
-var io = socketio(server.listener);
-var twilio = require('twilio')(process.env.ACCOUNT_SID, process.env.AUTH_TOKEN);
+require('dotenv').config();
 
-// Serve static assets
-server.route({
-  method: 'GET',
-  path: '/{path*}',
-  handler: {
-    directory: { path: './public', listing: false, index: true }
-  }
-});
+// Twilio init
+var twilio = require('twilio')(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+var express = require('express');
+var app = express();
+var http = require('http').createServer(app);
+var io = require('socket.io')(http);
 
+app.use(express.static('public'));
 // When a socket connects, set up the specific listeners we will use.
 io.on('connection', function(socket){
   // When a client tries to join a room, only allow them if they are first or
   // second in the room. Otherwise it is full.
   socket.on('join', function(room){
     var clients = io.sockets.adapter.rooms[room];
-    var numClients = (typeof clients !== 'undefined') ? Object.keys(clients).length : 0;
+    var numClients = typeof clients !== 'undefined' ? clients.length : 0;
     if(numClients == 0){
       socket.join(room);
     }else if(numClients == 1){
@@ -65,7 +59,6 @@ io.on('connection', function(socket){
   });
 });
 
-// Start the server
-server.start(function () {
-  console.log('Server running at:', server.info.uri);
+http.listen(3000, function() {
+  console.log('listening on *:3000');
 });
