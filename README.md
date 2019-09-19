@@ -18,6 +18,7 @@ https://github.com/vernig/video-chat.git
 ```
 npm install
 ```
+* Create a `.env` file copying `.env.template`. Fill-up `Account SID` and `Auth Token` from your [twilio console](https://www.twilio.com/console)
 * Start the server
 ```
 npm start
