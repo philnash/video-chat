@@ -12,12 +12,12 @@ function logIt(message, error) {
   logs.appendChild(tmp);
 }
 
-var connected = false;
-var localICECandidates = [];
-
 // Create an object to save various objects to without polluting the global
 // namespace.
 var VideoChat = {
+  connected: false,
+  localICECandidates: [],
+
   // Initialise our connection to the WebSocket.
   socket: io(),
 
@@ -103,7 +103,7 @@ var VideoChat = {
   onIceCandidate: function(event) {
     if (event.candidate) {
       logIt(`<<< Received local ICE candidate from STUN/TURN server (${event.candidate.address})`);
-      if (connected) {
+      if (VideoChat.connected) {
         logIt(`>>> Sending local ICE candidate (${event.candidate.address})`);
         VideoChat.socket.emit('candidate', JSON.stringify(event.candidate));
       } else {
@@ -111,7 +111,7 @@ var VideoChat = {
         // This most likely ios happening on the "caller" side.
         // The peer may not have created the RTCPeerConnection yet, so we are waiting for the 'answer'
         // to arrive. This will signal that the peer is ready to receive signaling. 
-        localICECandidates.push(event.candidate);
+        VideoChat.localICECandidates.push(event.candidate);
       }
     }
   },
@@ -152,7 +152,7 @@ var VideoChat = {
   createAnswer: function(offer) {
     return function() {
       logIt('>>> Creating answer...');
-      connected = true;
+      VideoChat.connected = true;
       rtcOffer = new RTCSessionDescription(JSON.parse(offer));
       VideoChat.peerConnection.setRemoteDescription(rtcOffer);
       VideoChat.peerConnection.createAnswer(
@@ -186,8 +186,8 @@ var VideoChat = {
     logIt('<<< Received answer');
     var rtcAnswer = new RTCSessionDescription(JSON.parse(answer));
     VideoChat.peerConnection.setRemoteDescription(rtcAnswer);
-    connected = true;
-    localICECandidates.forEach(candidate => {
+    VideoChat.connected = true;
+    VideoChat.localICECandidates.forEach(candidate => {
       // The caller now knows that the callee is ready to accept new 
       // ICE candidates, so sending the buffer over
       logIt(`>>> Sending local ICE candidate (${candidate.address})`);
@@ -195,7 +195,7 @@ var VideoChat = {
     });
     // Resest the buffer of local ICE candidates. This is not really needed
     // in this specific client, but it's good practice
-    localICECandidates = [];
+    VideoChat.localICECandidates = [];
   },
 
   // When the peerConnection receives the actual media stream from the other
