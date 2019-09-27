@@ -44,9 +44,8 @@ var VideoChat = {
     VideoChat.localVideo.volume = 0;
     VideoChat.localStream = stream;
     VideoChat.videoButton.setAttribute('disabled', 'disabled');
-    // Turn the media stream into a URL that can be used by the video and add it
-    // as the video's `src`. As the video has the `autoplay` attribute it will
-    // start to stream immediately.
+    // Add the stream as video's srcObject. 
+    // As the video has the `autoplay` attribute it will start to stream immediately.
     VideoChat.localVideo.srcObject = stream;
     // Now we're ready to join the chat room.
     VideoChat.socket.emit('join', 'test');
