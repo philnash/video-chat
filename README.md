@@ -1,6 +1,6 @@
 # Video Chat
 
-A simple video chat between two people as an example of how to connect two browsers via WebRTC using Twilio STUN/TURN infrastracture.
+A simple video chat between two clients as an example of how to connect two browsers via WebRTC using Twilio STUN/TURN infrastructure.
 
 The reference blog post is [here](https://www.twilio.com/blog/2014/12/set-phasers-to-stunturn-getting-started-with-webrtc-using-node-js-socket-io-and-twilios-nat-traversal-service.html)
 
