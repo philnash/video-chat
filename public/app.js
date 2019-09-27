@@ -27,7 +27,7 @@ var VideoChat = {
   // noMediaStream function.
   requestMediaStream: function(event) {
     navigator.mediaDevices
-      .getUserMedia({ video: true, audio: false })
+      .getUserMedia({ video: true, audio: true })
       .then(stream => {
         VideoChat.onMediaStream(stream);
       })
@@ -205,6 +205,7 @@ var VideoChat = {
     VideoChat.remoteVideo = document.getElementById('remote-video');
     // VideoChat.remoteVideo.src = window.URL.createObjectURL(event.stream);
     VideoChat.remoteVideo.srcObject = event.stream;
+    VideoChat.remoteVideo.volume = 0;
   }
 };
 
