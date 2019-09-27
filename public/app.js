@@ -47,8 +47,6 @@ var VideoChat = {
     // Turn the media stream into a URL that can be used by the video and add it
     // as the video's `src`. As the video has the `autoplay` attribute it will
     // start to stream immediately.
-    // The localVideo.src have been deprecated
-    // VideoChat.localVideo.src = window.URL.createObjectURL(stream);
     VideoChat.localVideo.srcObject = stream;
     // Now we're ready to join the chat room.
     VideoChat.socket.emit('join', 'test');
@@ -108,7 +106,7 @@ var VideoChat = {
         VideoChat.socket.emit('candidate', JSON.stringify(event.candidate));
       } else {
         // If we are not 'connected' to the other peer, we are buffering the local ICE candidates.
-        // This most likely ios happening on the "caller" side.
+        // This most likely is happening on the "caller" side.
         // The peer may not have created the RTCPeerConnection yet, so we are waiting for the 'answer'
         // to arrive. This will signal that the peer is ready to receive signaling. 
         VideoChat.localICECandidates.push(event.candidate);
@@ -203,7 +201,6 @@ var VideoChat = {
   onAddStream: function(event) {
     logIt('<<< Received new stream from remote. Adding it...');
     VideoChat.remoteVideo = document.getElementById('remote-video');
-    // VideoChat.remoteVideo.src = window.URL.createObjectURL(event.stream);
     VideoChat.remoteVideo.srcObject = event.stream;
     VideoChat.remoteVideo.volume = 0;
   }
