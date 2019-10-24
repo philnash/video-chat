@@ -1,6 +1,23 @@
+function logIt(message, error) {
+  // Print on console
+  console.log(message);
+
+  // Add to logs on page
+  let logs = document.getElementById('logs');
+  let tmp = document.createElement('P');
+  tmp.innerText = message;
+  if (error) {
+    tmp.classList.add('error');
+  }
+  logs.appendChild(tmp);
+}
+
 // Create an object to save various objects to without polluting the global
 // namespace.
 var VideoChat = {
+  connected: false,
+  localICECandidates: [],
+
   // Initialise our connection to the WebSocket.
   socket: io(),
 
@@ -8,26 +25,28 @@ var VideoChat = {
   // asking for access to both the video and audio streams. If the request is
   // accepted callback to the onMediaStream function, otherwise callback to the
   // noMediaStream function.
-  requestMediaStream: function(event){
-    getUserMedia(
-      {video: true, audio: true},
-      VideoChat.onMediaStream,
-      VideoChat.noMediaStream
-    );
+  requestMediaStream: function(event) {
+    navigator.mediaDevices
+      .getUserMedia({ video: true, audio: true })
+      .then(stream => {
+        VideoChat.onMediaStream(stream);
+      })
+      .catch(error => {
+        VideoChat.noMediaStream(error);
+      });
   },
 
   // The onMediaStream function receives the media stream as an argument.
-  onMediaStream: function(stream){
+  onMediaStream: function(stream) {
     // Get the video element.
     VideoChat.localVideo = document.getElementById('local-video');
     // Turn the volume down to 0 to avoid echoes.
     VideoChat.localVideo.volume = 0;
     VideoChat.localStream = stream;
     VideoChat.videoButton.setAttribute('disabled', 'disabled');
-    // Turn the media stream into a URL that can be used by the video and add it
-    // as the video's `src`. As the video has the `autoplay` attribute it will
-    // start to stream immediately.
-    VideoChat.localVideo.src = window.URL.createObjectURL(stream);
+    // Add the stream as video's srcObject. 
+    // As the video has the `autoplay` attribute it will start to stream immediately.
+    VideoChat.localVideo.srcObject = stream;
     // Now we're ready to join the chat room.
     VideoChat.socket.emit('join', 'test');
     VideoChat.socket.on('ready', VideoChat.readyToCall);
@@ -36,26 +55,28 @@ var VideoChat = {
 
   // There's not much to do in this demo if there is no media stream. So
   // let's just stop.
-  noMediaStream: function(){
-    console.log("No media stream for us.");
+  noMediaStream: function() {
+    logIt('No media stream for us.', error);
     // Sad trombone.
   },
 
   // When we are ready to call, enable the Call button.
-  readyToCall: function(event){
+  readyToCall: function(event) {
     VideoChat.callButton.removeAttribute('disabled');
   },
 
   // Set up a callback to run when we have the ephemeral token to use Twilio's
   // TURN server.
-  startCall: function(event){
+  startCall: function(event) {
+    logIt('>>> Sending token request...');
     VideoChat.socket.on('token', VideoChat.onToken(VideoChat.createOffer));
     VideoChat.socket.emit('token');
   },
 
   // When we receive the ephemeral token back from the server.
-  onToken: function(callback){
-    return function(token){
+  onToken: function(callback) {
+    return function(token) {
+      logIt('<<< Received token');
       // Set up a new RTCPeerConnection using the token's iceServers.
       VideoChat.peerConnection = new RTCPeerConnection({
         iceServers: token.iceServers
@@ -71,37 +92,51 @@ var VideoChat = {
       VideoChat.socket.on('candidate', VideoChat.onCandidate);
       VideoChat.socket.on('answer', VideoChat.onAnswer);
       callback();
-    }
+    };
   },
 
   // When the peerConnection generates an ice candidate, send it over the socket
   // to the peer.
-  onIceCandidate: function(event){
-    if(event.candidate){
-      VideoChat.socket.emit('candidate', JSON.stringify(event.candidate));
+  onIceCandidate: function(event) {
+    if (event.candidate) {
+      logIt(`<<< Received local ICE candidate from STUN/TURN server (${event.candidate.address})`);
+      if (VideoChat.connected) {
+        logIt(`>>> Sending local ICE candidate (${event.candidate.address})`);
+        VideoChat.socket.emit('candidate', JSON.stringify(event.candidate));
+      } else {
+        // If we are not 'connected' to the other peer, we are buffering the local ICE candidates.
+        // This most likely is happening on the "caller" side.
+        // The peer may not have created the RTCPeerConnection yet, so we are waiting for the 'answer'
+        // to arrive. This will signal that the peer is ready to receive signaling. 
+        VideoChat.localICECandidates.push(event.candidate);
+      }
     }
   },
 
   // When receiving a candidate over the socket, turn it back into a real
   // RTCIceCandidate and add it to the peerConnection.
-  onCandidate: function(candidate){
+  onCandidate: function(candidate) {
     rtcCandidate = new RTCIceCandidate(JSON.parse(candidate));
+    logIt(
+      `<<< Received remote ICE candidate (${rtcCandidate.address} - ${rtcCandidate.relatedAddress})`
+    );
     VideoChat.peerConnection.addIceCandidate(rtcCandidate);
   },
 
   // Create an offer that contains the media capabilities of the browser.
-  createOffer: function(){
+  createOffer: function() {
+    logIt('>>> Creating offer...');
     VideoChat.peerConnection.createOffer(
-      function(offer){
+      function(offer) {
         // If the offer is created successfully, set it as the local description
         // and send it over the socket connection to initiate the peerConnection
         // on the other side.
         VideoChat.peerConnection.setLocalDescription(offer);
         VideoChat.socket.emit('offer', JSON.stringify(offer));
       },
-      function(err){
+      function(err) {
         // Handle a failed offer creation.
-        console.log(err);
+        logIt(err, true);
       }
     );
   },
@@ -111,42 +146,62 @@ var VideoChat = {
   // needs to be parsed into an RTCSessionDescription and added as the remote
   // description to the peerConnection object. Then the answer is created in the
   // same manner as the offer and sent over the socket.
-  createAnswer: function(offer){
-    return function(){
+  createAnswer: function(offer) {
+    return function() {
+      logIt('>>> Creating answer...');
+      VideoChat.connected = true;
       rtcOffer = new RTCSessionDescription(JSON.parse(offer));
       VideoChat.peerConnection.setRemoteDescription(rtcOffer);
       VideoChat.peerConnection.createAnswer(
-        function(answer){
+        function(answer) {
+          console.log(answer);
           VideoChat.peerConnection.setLocalDescription(answer);
           VideoChat.socket.emit('answer', JSON.stringify(answer));
         },
-        function(err){
+        function(err) {
           // Handle a failed answer creation.
-          console.log(err);
+          logIt(err, true);
         }
       );
-    }
+    };
   },
 
   // When a browser receives an offer, set up a callback to be run when the
   // ephemeral token is returned from Twilio.
-  onOffer: function(offer){
-    VideoChat.socket.on('token', VideoChat.onToken(VideoChat.createAnswer(offer)));
+  onOffer: function(offer) {
+    logIt('<<< Received offer');
+    VideoChat.socket.on(
+      'token',
+      VideoChat.onToken(VideoChat.createAnswer(offer))
+    );
     VideoChat.socket.emit('token');
   },
 
   // When an answer is received, add it to the peerConnection as the remote
   // description.
-  onAnswer: function(answer){
+  onAnswer: function(answer) {
+    logIt('<<< Received answer');
     var rtcAnswer = new RTCSessionDescription(JSON.parse(answer));
     VideoChat.peerConnection.setRemoteDescription(rtcAnswer);
+    VideoChat.connected = true;
+    VideoChat.localICECandidates.forEach(candidate => {
+      // The caller now knows that the callee is ready to accept new 
+      // ICE candidates, so sending the buffer over
+      logIt(`>>> Sending local ICE candidate (${candidate.address})`);
+      VideoChat.socket.emit('candidate', JSON.stringify(candidate));
+    });
+    // Resest the buffer of local ICE candidates. This is not really needed
+    // in this specific client, but it's good practice
+    VideoChat.localICECandidates = [];
   },
 
   // When the peerConnection receives the actual media stream from the other
   // browser, add it to the other video element on the page.
-  onAddStream: function(event){
+  onAddStream: function(event) {
+    logIt('<<< Received new stream from remote. Adding it...');
     VideoChat.remoteVideo = document.getElementById('remote-video');
-    VideoChat.remoteVideo.src = window.URL.createObjectURL(event.stream);
+    VideoChat.remoteVideo.srcObject = event.stream;
+    VideoChat.remoteVideo.volume = 0;
   }
 };
 
@@ -161,8 +216,4 @@ VideoChat.videoButton.addEventListener(
 
 // Get the call button and add a click listener to start the peerConnection
 VideoChat.callButton = document.getElementById('call');
-VideoChat.callButton.addEventListener(
-  'click',
-  VideoChat.startCall,
-  false
-);
+VideoChat.callButton.addEventListener('click', VideoChat.startCall, false);

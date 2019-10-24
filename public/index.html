@@ -1,21 +1,36 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>Video Chat</title>
-</head>
-<body>
-  <h1>Video Chat</h1>
-  <video id="local-video" height="150" autoplay></video>
-  <video id="remote-video" height="150" autoplay></video>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video Chat</title>
+    <style>
+    
+    div#logs p {
+      margin: 0;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 9px;
+    }
 
-  <div>
-    <button id="get-video">Get Video</button>
-    <button id="call" disabled="disabled">Call</button>
-  </div>
+    div#logs p.error {
+      color: red;
+    }
+    
+    </style>
+  </head>
+  <body>
+    <h1>Video Chat</h1>
+    <video id="local-video" height="150" autoplay></video>
+    <video id="remote-video" height="150" autoplay></video>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/adapter.js"></script>
-  <script src="/app.js"></script>
-</body>
+    <div>
+      <button id="get-video">Get Video</button>
+      <button id="call" disabled="disabled">Call</button>
+    </div>
+    <p>Log messages:</p>
+    <div id="logs">
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+  </body>
 </html>
